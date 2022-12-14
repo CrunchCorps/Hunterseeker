@@ -28,12 +28,12 @@ Clone the repository:
       git clone https://github.com/CrunchCorps/Hunterseeker.git
 
 Running the script in interactive mode [require SUDO privilges]:
-  
-      sudo bash /.Hunterseeker.sh --interactive
+      chmod 777 Hunterseeker.sh
+      ./Hunterseeker.sh --interactive
 
 Prompting the full help menu for the script:
 
-      sudo bash /.Hunterseeker.sh --help
+      ./Hunterseeker.sh --help
       
 ---
    
