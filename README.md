@@ -28,6 +28,7 @@ Clone the repository:
       git clone https://github.com/CrunchCorps/Hunterseeker.git
 
 Running the script in interactive mode [require SUDO privilges]:
+
       chmod 777 Hunterseeker.sh
       ./Hunterseeker.sh --interactive
 
