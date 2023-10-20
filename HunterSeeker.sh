@@ -16,16 +16,22 @@ Gray='\033[1;38;5;248m' #Color Gray
 WGray='\033[38;5;253m' #Color White Gray
 DGR='\033[0;32m' #Color DarkGreen.
 LBlue='\033[1;34m' #Color Light Blue
-LRED='\033[1;31m' #Color Light Red
+LRed='\033[1;31m' #Color Light Red
 LGreen='\033[1;32m' #Color Light Green
 reset='\e[0m'
 
 ##### CHECK IF SCRIPT HAS PRIVILEGES #####
-if ! [ $(id -u) = 0 ]; then
+if ! [ $(stat HunterSeeker.sh | grep "Access: (" | cut -d '(' -f2 | cut -d '/' -f1) = 0777 ]; then
     echo -e "${DGR}"
     echo "The script need to be run as root." >&2
     exit 1
+#    if ! [ $(id -u) = 0 ]; then
+#        echo -e "${DGR}"
+#        echo "The script need to be run as root." >&2
+#        exit 1
+#    fi
 fi
+
 #####TEST IF ROOT#####
 if [ $SUDO_USER ]; 
     then
@@ -65,7 +71,7 @@ function HelpShort()
   ${Gray}usage: ${MGray}Hunterseeker ${WGray}[-h] [-i] [-m FILENAME] [-b IP | ADDRESS] 
          [-o LOG OUTPUT DIRECTORY] [-v] [--live]
 
-  ${LRED}Hunter-Seeker${MGray} is a tool used for basic analysis of URL links, IP addresses, 
+  ${LRed}Hunter-Seeker${MGray} is a tool used for basic analysis of URL links, IP addresses, 
   extracting and analysing suscpicous files and detect potential malware.
 
   options:
@@ -87,7 +93,7 @@ function HelpFull()
   ${Gray}usage: ${MGray}Hunterseeker ${WGray}[-h] [-i] [-m FILENAME] [-b IP | ADDRESS] 
          [-o LOG OUTPUT DIRECTORY] [-v] [--live]
 
-  ${LRED}Hunter-Seeker ${MGray}is a tool used for basic analysis of URL links, IP addresses, 
+  ${LRed}Hunter-Seeker ${MGray}is a tool used for basic analysis of URL links, IP addresses, 
   extracting and analysing suscpicous files and detect potential malware.
   ${Gray}
   options:
@@ -106,10 +112,10 @@ function HelpFull()
     -v, --version                 Show the version of this program.
 
 
-${LRED}HUNTER-SEEKER ${Gray}is an Ixian technology. An assassination device that floats 
+${LRed}HUNTER-SEEKER ${Gray}is an Ixian technology. An assassination device that floats 
 in mid-air; kills by entering the body and following nerve pathways to vital 
 organs. ${DGray}Invented by ${WGray}Frank Herbert ${DGray}in ${WGray}Dune: ${DGray}\"From behind the headboard 
-slipped a tiny ${LRED}hunter-seeker ${DGray}no more than five centimeters long.\"
+slipped a tiny ${LRed}hunter-seeker ${DGray}no more than five centimeters long.\"
 \"It was a ravening sliver of metal guided by some near-by hand and eye.\"
 
 "
@@ -127,7 +133,7 @@ fi
 
 tput setaf 196; figlet -f slant Hunter-Seeker; tput sgr0
 echo -e "${WGray}[ Jacurutu | https://github.com/RandomLinoge ]" | sed 's/^/          /'
-echo -e -n "${LRED} 
+echo -e -n "${LRed} 
 Hunter-Seeker ${MGray}is a tool used for basic analysis of URL links, IP addresses, 
 extracting and analysing suscpicous files and detect potential malware.
 
@@ -148,7 +154,7 @@ read -p "$(echo -e ${WGray}"Choose: ")" MainOptions
   3)
   clear
   echo -n -e "
-$Gray[$LRED+$Gray] ${LRED}Hunter-Seeker ${WGray}started analysis: "${Gray}$(ip route | tail -1 | cut -d " " -f1)"     ${WGray}[Press any key to break]
+$Gray[$LRed+$Gray] ${LRed}Hunter-Seeker ${WGray}started analysis: "${Gray}$(ip route | tail -1 | cut -d " " -f1)"     ${WGray}[Press any key to break]
 "
     LiveOn
     ;;
@@ -229,6 +235,7 @@ echo -e "${WGray}File Analysis Options:${reset}"
 echo
 echo -e "${Gray}1. Upload a potential malware hash of a file for analysis."
 echo -e "${Gray}2. Upload a log file with multiple IP/URLs for analysis [addresses should be segregated line by line]."
+echo -e "${Gray}3. Upload a batch file with multiple hashes for analysis."
 echo -e "${Gray}x. Back to Main Menu"
 read -p "$(echo -e ${WGray}"Choose: ")" FileAnOptions
   clear
@@ -259,37 +266,42 @@ read -p "$(echo -e ${WGray}"Choose: ")" FileAnOptions
     echo 
     echo -e "${WGray}--Total Votes--${reset}"
     sleep 1.5
-    echo -e "${LRED}Malicious: ${WGray}$TotalVotes"
+    echo -e "${LRed}Malicious: ${WGray}$TotalVotes"
     sleep 4
     MainMenu
     ;;
   2)
     echo
     read -p "$(echo -e ${Gray}"Enter a file path to analyze: [usage: \"/../<filename.ext>\"]: "${WGray})" BatchName
-    echo -e "${Gray}Analyzing malicious activity in the IoC file provided -${WGray} $BatchName     ${WGray}[Press any key to break]"
-    awk 'BEGIN{ ORS="" } { for ( i=1; i<= NF ; i++){ print $i"\n"  }  }' $BatchName | sort -u --sort=n > batchchk
+    echo -e "${Gray}Analyzing malicious activity in the IoC file provided -${WGray} $BatchName 2>/dev/null    ${WGray}[Press any key to break]"
+    sudo awk 'BEGIN{ ORS="" } { for ( i=1; i<= NF ; i++){ print $i"\n"  }  }' $BatchName | sort -u --sort=n | sudo tee batchchk >/dev/nul
     file=$(cat batchchk) 
     for line in $file
     do
       sleep 1
-      if [ -s malchk ]
+      if [ -s malchk ];
       then
-        ./vt ip $line > malchk 2>/dev/null
-        ID=$(cat malchk | grep -i "_id" | head -n1 | cut -d":" -f2 | cut -d"\"" -f2)
+       sudo ./vt file $line --apikey $VTAPI | sudo tee malchk2 >/dev/null
+        ID=$(cat malchk2 | grep -i "_id" | head -n1 | cut -d":" -f2)
+        FileCreation=$(cat malchk2 | grep -i "creation" | head -n1 | cut -d"#" -f2)
+        FileType=$(cat malchk2 | grep "file_type" | cut -d":" -f2)
       fi
-      if [ ! -s malchk ]
+      if ! [ -s malchk ];
       then
         ./vt url $line > malchk 2>/dev/null
         ID=$(cat malchk | grep -i "url" | tail -n1 | cut -d"\"" -f2)
       fi
-      echo -e -n "${MGray}[${WGray}ID: \033[38;5;132m"$ID"${WGray}]"
-      cat malchk | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2 > malchk2
+      echo -e "${MGray}[${WGray}ID:\033[38;5;132m"$ID"\033[38;5;253m]"
+      echo -e "${MGray}[${WGray}Creation: \033[38;5;132m$FileCreation\033[38;5;253m]"
+      echo -e "${MGray}[${WGray}Filetype: \033[38;5;132m\\n$FileType\033[38;5;253m]"
+      sudo cat malchk2 | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2 | sudo tee malchk3 >/dev/null
       sleep 1.5
-      if [ ! $(cat malchk2) = "0" ]
-        then
-          echo -e "\033[38;5;39m -- ${WGray}[\033[38;5;196mMalicious code found${WGray}]: ${LRED}"$(cat malchk2) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
-        else
-          echo -e "\033[38;5;39m -- ${WGray}[${LBlue}Malicious code found${WGray}]: ${LGreen}"$(cat malchk2) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
+      sudo cat malchk2 | grep "malicious:" | sort -u |  cut -d":" -f2 | sudo tee malchk3 >/dev/null
+      if [ $(cat malchk3 | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2) = 0 ];
+         then
+            echo -e "${Wgray}[${LRed}Malicious code found"${WGray}]: ${LRed}$(cat malchk2 | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2)
+         else
+            echo -e "${Wgray}[${LBlue}Malicious code found"${WGray}]: ${LGreen}$(cat malchk3 | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2)
       fi
       sleep 2.5
       read -n 1
@@ -298,13 +310,13 @@ read -p "$(echo -e ${WGray}"Choose: ")" FileAnOptions
     done
     if [ -d "$logpath/" ]; then
       if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
-        cat malchk >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+        cat malchk2 >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
       else
-        cat malchk > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+        cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
       fi
     else
-      mkdir $logpath 2>/dev/nul
-      cat malchk > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+      mkdir $logpath 2>/dev/null
+      cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
     fi
     echo
     echo -e "${Gray}Log file saved - ${WGray}$logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log"
@@ -312,6 +324,68 @@ read -p "$(echo -e ${WGray}"Choose: ")" FileAnOptions
     echo 
     sleep 4
     MainMenu
+    ;;
+  3) 
+    echo
+    read -p "$(echo -e ${Gray}"Enter a file path to analyze: [usage: \"/../<filename.ext>\"]: "${WGray})" BatchName
+    echo -e "${Gray}Analyzing malicious activity in the IoC file provided -${WGray} $BatchName     ${WGray}[Press any key to break]"
+    sudo awk 'BEGIN{ ORS="" } { for ( i=1; i<= NF ; i++){ print $i"\n"  }  }' $BatchName | sort -u --sort=n | sudo tee batchchk >/dev/null
+    processFile() {
+        file="batchchk"
+        local IFS="\n"
+        while read -r line; do
+        sleep 1
+        sudo echo -E $line | sudo tee malchk >/dev/null
+        if [ -s malchk ];
+        then
+            sudo ./vt file $(cat malchk) --apikey $VTAPI | sudo tee malchk2 >/dev/null
+            ID=$(cat malchk2 | grep -i "_id" | head -n1 | cut -d":" -f2)
+            FileCreation=$(cat malchk2 | grep -i "creation" | head -n1 | cut -d"#" -f2)
+            FileType=$(cat malchk2 | grep "file_type" | cut -d":" -f2)
+        fi
+        echo -e "${MGray}[${WGray}ID:\033[38;5;132m"$ID"\033[38;5;253m]"
+        echo -e "${MGray}[${WGray}Creation: \033[38;5;132m$FileCreation\033[38;5;253m]"
+        echo -e "${MGray}[${WGray}Filetype: \033[38;5;132m\\n$FileType\033[38;5;253m]"
+        sudo rm malchk
+        sleep 1.5
+        cat malchk2 | grep last_analysis -n8 | awk '{ print $2,$3 }' | tail -n7 | sudo tee malchk3 >/dev/null
+        echo
+        if [ $(cat malchk2 | grep last_analysis -n8 | awk '{ print $2,$3 }' | tail -n7 | grep malicious | cut -d":" -f2) = 0 ]; then
+            echo -e "${Wgray}[${LRed}Malicious Analysis Found${WGray}]:{Gray}\\n$(cat malchk3 | awk -v ORS='\\n' 1) "
+             if [ -d "$logpath/" ]; then
+                if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
+                    cat malchk2 >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+                else
+                    cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+                fi
+            else
+                mkdir $logpath 2>/dev/null
+                cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            fi
+        else
+            echo -e "${Wgray}[${LBlue}Analysis found${WGray}]:${LGreen}\\n$(cat malchk3 | awk -v ORS='\\n' 1)"
+              if [ -d "$logpath/" ]; then
+                if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
+                    cat malchk2 >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+                else
+                    cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+                fi
+            else
+                mkdir $logpath 2>/dev/null
+                cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            fi
+        fi
+        sleep 2.5
+        read -n 1
+        read -t 0.1 -n 1000000
+        done < $file
+    }
+    processFile $(pwd)/batchchk
+    echo
+    echo -e "${Gray}Log file saved - ${WGray}$logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log"
+    sleep 1
+    echo
+    sleep 4
     ;;
   x)
     MainMenu
@@ -408,7 +482,7 @@ read -p "$(echo -e ${WGray}"Choose: ")" NetAnOptions
     echo 
     echo -e "${WGray}--Total Votes--${reset}"
     sleep 1.5
-    echo -e "${LRED}Malicious: ${WGray}$TotalVotes"
+    echo -e "${LRed}Malicious: ${WGray}$TotalVotes"
     sleep 4
     sudo rm malchk
     MainMenu
@@ -435,7 +509,7 @@ read -p "$(echo -e ${WGray}"Choose: ")" NetAnOptions
     echo 
     echo -e "${WGray}--Total Votes--${reset}"
     sleep 1.5
-    echo -e "${LRED}Malicious: ${WGray}$TotalVotes"
+    echo -e "${LRed}Malicious: ${WGray}$TotalVotes"
     sleep 4
     sudo rm malchk
     MainMenu
@@ -445,13 +519,14 @@ read -p "$(echo -e ${WGray}"Choose: ")" NetAnOptions
     ;;
   esac
 }
+
 #####EXIT SCRIPT#####
 function Exit()
 {
   echo -e -n "
    
 "
-  echo -e "${MGray}Thank you for using ${LRED}Hunter-Seeker${MGray}." | sed 's/^/         /'
+  echo -e "${MGray}Thank you for using ${LRed}Hunter-Seeker${MGray}." | sed 's/^/         /'
   echo -e "${MGray}Goodbye!${reset}" | sed 's/^/         /'
   echo -n "
    
@@ -476,7 +551,7 @@ function NetAnBind()
         then
           echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LGreen}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
         else
-          echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LRED}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
+          echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LRed}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
       fi
     fi
     echo -e -n "${Gray} [ID: ${WGray}"$(cat BindIPchk | grep -i "_id"  | cut -d"\"" -f2)"${Gray}]"
@@ -485,7 +560,7 @@ function NetAnBind()
       then
         echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LGreen}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
       else
-        echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LRED}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
+        echo -e "\033[38;5;39m -- ${Gray}[Malicious code found]: ${LRed}"$(cat malchk) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
     fi
   fi
   echo
@@ -514,62 +589,80 @@ function NetAnBind()
   echo -e "${Gray}Log file saved - ${WGray}$logpath/HuntSeek-MalLink-$(date +'%d-%m-%Y').log"
   sleep 2
   Exit
+  
 }
 #####FILEBATCH BIND WITHOUT INTERACTIVE MENUS#####
 function FileAnBind()
 {
 clear
 echo -e "${Gray}Analyzing malicious activity in the IoC file provided -${WGray} $BIND     ${WGray}[Press any key to break]"
-awk 'BEGIN{ ORS="" } { for ( i=1; i<= NF ; i++){ print $i"\n"  }  }' $BIND | sort -u > batchchk
-file=$(cat batchchk)
-  for line in $file
-  do
+sudo awk 'BEGIN{ ORS="" } { for ( i=1; i<= NF ; i++){ print $i"\n"  }  }' $BIND | sort -u --sort=n | sudo tee batchchk >/dev/null
+processFile() {
+    file=$BIND
+    local IFS="\n"
+    while read -r line; do
     sleep 1
-    ./vt ip $line > malchk 2>/dev/null
-    ID=$(cat malchk | grep -i "_id" | head -n1 | cut -d":" -f2 | cut -d"\"" -f2)
-    if [ ! -s malchk ]
+    sudo echo -E $line | sudo tee malchk >/dev/null
+    if [ -s malchk ];
     then
-      ./vt url $line > malchk 2>/dev/null
-      ID=$(cat malchk | grep -i "url" | tail -n1 | cut -d"\"" -f2)
+        sudo ./vt file $(cat malchk) --apikey $VTAPI | sudo tee malchk2 >/dev/null
+        ID=$(cat malchk2 | grep -i "_id" | head -n1 | cut -d":" -f2)
+        FileCreation=$(cat malchk2 | grep -i "creation" | head -n1 | cut -d"#" -f2)
+        FileType=$(cat malchk2 | grep "file_type" | cut -d":" -f2)
     fi
-    echo -e -n "${MGray} [ID: \033[38;5;39m"$ID"${MGray}]"
-    cat malchk | grep "total_votes" -2 | grep malicious | head -n1 | cut -d":" -f2 > malchk2
-    sleep 1
-    if [ -d "$logpath/" ]; then
-      if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
-        cat malchk >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
-      else
-        cat malchk > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
-      fi
+    echo -e "${MGray}[${WGray}ID:\033[38;5;132m"$ID"\033[38;5;253m]"
+    echo -e "${MGray}[${WGray}Creation: \033[38;5;132m$FileCreation\033[38;5;253m]"
+    echo -e "${MGray}[${WGray}Filetype: \033[38;5;132m\\n$FileType\033[38;5;253m]"
+    sudo rm malchk
+    sleep 1.5
+    cat malchk2 | grep last_analysis -n8 | awk '{ print $2,$3 }' | tail -n7 | sudo tee malchk3 >/dev/null
+    echo
+    if [[ $(cat malchk2 | grep last_analysis -n8 | awk '{ print $2,$3 }' | tail -n7 | grep malicious | cut -d":" -f2) == 0 ]]; then
+        echo -e "${Wgray}[${LRed}Malicious Analysis:${WGray}]{Gray}\\n$(cat malchk3 | awk -v ORS='\\n' 1) "
+        if [ -d "$logpath/" ]; then
+            if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
+                cat malchk2 >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            else
+                cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            fi
+       else
+            mkdir $logpath 2>/dev/null
+            cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+        fi
     else
-      mkdir $logpath 2>/dev/nul
-      cat malchk > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
-    fi
-    if [ ! $(cat malchk2) = "0" ]
-      then
-        echo -e "\033[38;5;39m -- ${Gray}[${LRED}Malicious code found${Gray}]: ${LRED}"$(cat malchk2) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
-      else
-        echo -e "\033[38;5;39m -- ${Gray}[\033[38;5;132mMalicious code found${Gray}]: ${LGreen}"$(cat malchk2) | sed 's/\(^ *\) \( [^ ]\)/\1-\2/'
+        echo -e "${Wgray}[${LBlue}Analysis:${WGray}]${LGreen}\\n$(cat malchk3 | awk -v ORS='\\n' 1)"
+        if [ -d "$logpath/" ]; then
+            if [ -f "$logpath/HuntSeek-MalMultifiles-$(date +'%d-%m-%Y').log" ]; then
+                cat malchk2 >> $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            else
+                cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+            fi
+        else
+            mkdir $logpath 2>/dev/null
+            cat malchk2 > $logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log
+        fi
     fi
     sleep 2.5
     read -n 1
-    sudo pkill tshark   #kill tshark
     read -t 0.1 -n 1000000
-    echo -n"
+    done < $file
+}
+processFile $(pwd)/batchchk
+echo
+echo -n"
     
-    "
-    echo -e "${Gray}Log file saved - ${WGray}$logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log"
-    sleep 4
-    Exit
-  done
-  
+"
+echo -e "${Gray}Log file saved - ${WGray}$logpath/HuntSeek-MalMultFiles-$(date +'%d-%m-%Y').log"
+sleep 4
+Exit
+   
 }
 #####SCRIPT VERSION#####
 function Version()
 {
   clear
   tput setaf 196; figlet -f mini Hunter-Seeker| sed 's/^/   /'; tput sgr0  
-  echo -e "${DGray}[ ${WGray}Jacurutu ${DGray}| ${WGray}https://github.com/RandomLinoge ${DGray}| ${WGray}v1.2.9]"
+  echo -e "${DGray}[ ${WGray}Jacurutu ${DGray}| ${WGray}https://github.com/RandomLinoge ${DGray}| ${WGray}v1.3.6]"
   echo
   sleep 1
 }
@@ -612,13 +705,13 @@ LiveOn
   if [ "$1" == "--live" ]; then
     clear
     echo -n -e "
-${Gray}[${LRED}+${Gray}] ${LRED}Hunter-Seeker ${WGray}started analysis: "${Gray}$(ip route | tail -1 | cut -d " " -f1)"    ${WGray}[Press any key to break]
+${Gray}[${LRed}+${Gray}] ${LRed}Hunter-Seeker ${WGray}started analysis: "${Gray}$(ip route | tail -1 | cut -d " " -f1)"    ${WGray}[Press any key to break]
 
 "
     LiveOn
   fi
 
-  if [[ "$1" == "-b" && ! -d $2 ]] && [ "$3" == "-o" ] && [ -d $4 ]; then
+  if [[ "$1" == "-b" && ! -z "$2" ]] && [[ "$3" == "-o" && ! -z "$4" ]]; then
                                  
     clear
     logpath=$4
@@ -626,7 +719,7 @@ ${Gray}[${LRED}+${Gray}] ${LRED}Hunter-Seeker ${WGray}started analysis: "${Gray}
     NetAnBind
   fi
 
-  if [[ "$1" == "-b" && -d $2 ]] && [ "$3" == "-o" ] && [ ! -d $4 ]; then
+  if [[ "$1" == "-b" && ! -z $2 ]] && [[ "$3" == "-o" && -z $4 ]]; then
     echo
     echo -e -n "${MGray}
 Incorret use of program pre-options.
@@ -637,14 +730,14 @@ Example of usage: ${WGray}\"./Hunterseeker -b [IP|Hostname] -o [Log output direc
     Exit
   fi
 
-  if [[ "$1" == "-m" && ! -d $2 ]] && [ "$3" == "-o" ] && [ -d $4 ]; then
+  if [[ "$1" == "-m" && ! -z "$2" ]] && [[ "$3" == "-o" && ! -z "$4" ]]; then
     clear
     logpath=$4
     BIND=$2
     FileAnBind
   fi
 
-  if [[ "$1" == "-m" && -d $2 ]] && [ "$3" == "-o" ] && [ ! -d $4 ]; then
+  if [[ "$1" == "-m" && ! -z "$2" ]] && [[ "$3" == "-o" && -z "$4" ]]; then
     echo
     echo -e -n "${MGray}
 Incorret use of program pre-options.
@@ -655,7 +748,7 @@ Example of usage: ${WGray}\"./Hunterseeker -m [Filename] -o [Log output director
     Exit
   fi
 
-  if [[ "$1" == "-m" && -d $2 ]]; then
+  if [[ "$1" == "-m" && -z "$2" ]]; then
     echo
     echo -e -n "${MGray}
 Incorret use of program pre-options.
@@ -664,6 +757,11 @@ referring to help options - ${WGray}\"./Hunterseeker --help\"${MGray}.
 Example of usage: ${WGray}\"./Hunterseeker -m [Filename] -o [Log output directory]\"
 "
     Exit
+  fi
+
+  if [[ "$1" == "-m" && ! -z "$2" ]]; then
+    BIND=$2
+    FileAnBind
   fi
 
   if [ "$1" == "-o" ]; then
@@ -677,7 +775,7 @@ Example of usage: ${WGray}\"./Hunterseeker -i|--interactive -o [Log output direc
     Exit
   fi
 
-  if [ -d $1 ]; then
+  if [ -z "$1" ]; then
     MainMenu
   fi
 
@@ -700,7 +798,7 @@ Example of usage: ${WGray}\"./Hunterseeker -b [IP|Hostname] -o [Log output direc
     Exit
   fi
 
-  if [ "$1" == "-b" ] && [ -d $2 ]; then
+  if [[ "$1" == "-b" && -z $2 ]]; then
     echo
     echo -e -n "
 ${MGray}Incorret use of program pre-options.
